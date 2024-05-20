@@ -6,8 +6,15 @@ const Colour = require('./Colours.js');
 
 const compainAttribute = sequelize.define('CompainAttributes', {
     productId: DataTypes.INTEGER,
-    colour_Value_Id: DataTypes.ARRAY(DataTypes.INTEGER), // Change data type to array of integers
-    size_Value_Id: DataTypes.ARRAY(DataTypes.INTEGER) // Change data type to array of integers
+    colour_Value_Id: DataTypes.INTEGER, // Change data type to array of integers
+    size_Value_Id: DataTypes.INTEGER,
+    colour: DataTypes.STRING,
+    size: DataTypes.STRING,
+    stock: DataTypes.BOOLEAN,
+    pcs: DataTypes.INTEGER,
+    image: DataTypes.STRING,
+    description: DataTypes.STRING,
+    variationPrice: DataTypes.INTEGER // Change data type to array of integers
 });
 
 // compainAttribute.belongsTo(Product, { foreignKey: 'productId', targetKey: 'id' });

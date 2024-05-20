@@ -20,7 +20,8 @@ router.post('/loginVerifyOtp', adminController.loginVerifyOtp);
 router.post('/createAttributes', adminController.createAttributes);
 //router.post('/createProductAttributes', adminController.createProductAttributes);
 router.post('/createCompainAttribute/:productId', adminController.createCompainAttribute);
-router.post('/AttributeVariations/:productId', adminController.AttributeVariations);
+router.post('/AttributeVariations/:productId', adminController.createAttributeVariation);
+router.get('/getAttributeVariations/:productId',adminController.GetAttributeVariations);
 // const userController = require('../controllers/userController');
 
 // router.use('/tmp', express.static('tmp'));

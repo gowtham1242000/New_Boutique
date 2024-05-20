@@ -5,7 +5,7 @@ const fileUpload          = require('express-fileupload');
 const util =require('util');
 const exec = util.promisify(require('child_process').exec);
 const fs = require('fs');
-
+const path = require('path');
 const Categorie = require('../models/Categories');
 const Product = require('../models/Products');
 const Colour = require('../models/Colours');
@@ -18,7 +18,7 @@ const AttributeVariations=require('../models/AttributeVariations');
 const CompainAttributes=require('../models/CompainAttribute');
 const Order= require('../models/Orders');
 const ProductDiscounts = require('../models/ProductDiscount');
-
+const sharp = require('sharp');
 
 const CategoriePath='/etc/ec/data/Categorie/';
 const ProductPath='/etc/ec/data/Product/';
@@ -48,37 +48,6 @@ function generateOTP() {
   return otp;
 }
 
-// exports.createAttribute = async (req,res) =>{
-//     //const {attribute,values,status} = req.body;
-//     console.log("req.body-------",req.body)
-//     try{
-//         const {attribute,values,status} = req.body;
-//         const createAttribute = await Attribute.create({attribute});
-//         console.log("attribute----------",createAttribute);
-//     }catch(error){
-//         console.log("error-------",error)
-//     }
-
-// }
-
-exports.loginRequestOtp = async (req, res) => {
-  try {
-    const { mobilenumber } = req.body;
-    const otp = generateOTP();
-    const otpTimestamp = new Date();
-
-    // Create user record with mobile number and OTP
-    await User.create({ mobilenumber, otp, otpTimestamp });
-
-    // Send OTP via SMS
-    await sendOTP(mobilenumber, otp);
-
-    res.status(200).json({ message: 'OTP sent successfully', otp });
-  } catch (error) {
-    console.error('Error generating OTP:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-};
 
 
 exports.loginRequestOtp = async (req, res) => {
@@ -113,7 +82,7 @@ exports.loginVerifyOtp = async (req, res) => {
       return res.status(404).json({ message: 'Mobile number not found' });
     }
      if(otp === user.otp){
-         await user.destroy();
+        // await user.destroy();
       return res.status(200).json({ message: 'OTP verified successfully' });
     } else {
       return res.status(400).json({ message: 'Invalid OTP or expired' });
@@ -139,7 +108,7 @@ exports.createCategorie = async (req, res) => {
         console.log("finalName--------",finalName)
         var desImageUrl = '';
         fs.writeFileSync(`${desImageDir}/${req.files.image.name}`,req.files.image.data, 'binary');
-        destinationImgUrl = `http://localhost${URLpathc}/${finalName}/${req.files.image.name}`;
+        destinationImgUrl = `https://salesman.aindriya.co.in${URLpathc}/${finalName}/${req.files.image.name}`;
         const categorie = await Categorie.create({
                 categoriesName:categoriesName,
                 image:destinationImgUrl,
@@ -192,7 +161,7 @@ exports.updateCategorie = async (req, res) => {
         fs.writeFileSync(imagePath, req.files.image.data, 'binary');
 
         // Update the category's image URL
-        categorie.image = `http://localhost${URLpathc}/${finalName}/${req.files.image.name}`;
+        categorie.image = `https://salesman.aindriya.co.in${URLpathc}/${finalName}/${req.files.image.name}`;
 
         // Save the updated category
         await categorie.save();
@@ -268,18 +237,19 @@ exports.createProduct = async (req, res) => {
 
     try {
         // Extract data from request body
-        const { name, code, categorie, sellingPrice, status, description,
+        const { name,code,categoriesId,description,sellingPrice,status,
             minimumQuantity, discountPercentage, gstTaxPercentage,
             minimumQuantityWholesale, wholesalePrice } = req.body;
-console.log("categories--------",categorie)
-            const categories = await Categorie.findAll({where:{id:categorie}})
-        const  categoriesName= categories[0].dataValues.categoriesName;
-        console.log("categoriesName",categoriesName);
+//console.log("categories--------",categorie)
+  //          const categories = await Categorie.findAll({where:{id:categorie}})
+        //const  categoriesName= categories[0].dataValues.categoriesName;
+        //console.log("categoriesName",categoriesName);
         // Create the product
-        const product = await Product.create({ name, code, categories:categoriesName,categoriesId:categorie, sellingPrice, status, description });
-const productId = product.dataValues.id
+	const product = await  Product.create({ name,code,categoriesId,description,sellingPrice,status });
+console.log("product-------",product)
+console.log("productId---",product.id)
+const productId = product.id
 console.log("productId---",productId)
-
         // Create the product discount
         await ProductDiscounts.create({
             minimum_Quantity_Discount:minimumQuantity, discount_Percentage:discountPercentage, tax_Percentage:gstTaxPercentage,
@@ -297,7 +267,7 @@ console.log("productId---",productId)
 
 
 
-exports.createCompainAttribute = async (req, res) => {
+/*exports.createCompainAttribute = async (req, res) => {
     try {
         const productId = req.params.productId;
         const { size, colour } = req.body;
@@ -323,56 +293,161 @@ exports.createCompainAttribute = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
-
+*/
+//createAttributeVariations
 exports.createAttributeVariation = async (req, res) => {
-    try {
-        const productId = req.params.productId;
-        const variationData = req.body;
+/*try {
+    const productId = req.params.productId;
+    const variations = req.body.variations;
 
-        // Function to fetch colourName based on colourId
-        const getColourName = async (colourId) => {
-            const colour = await Colour.findByPk(colourId);
-            return colour ? colour.colourName : null;
-        };
-
-        // Function to fetch size based on sizeId
-        const getSize = async (sizeId) => {
-            const size = await Size.findByPk(sizeId);
-            return size ? size.size : null;
-        };
-
-        // Iterate over each variation object in the request body
-        for (const variation of variationData) {
-            const { colourId, sizeId, stock, pcs, image, description, price } = variation;
-
-            // Fetch the colourName and size based on the colourId and sizeId
-            const colourName = await getColourName(colourId);
-            const size = await getSize(sizeId);
-
-            // Create or update the AttributeVariation entry
-            await AttributeVariation.create({
-                colourId: colourId,
-                sizeId: sizeId,
-                colourName: colourName, // Add the fetched colourName
-                size: size, // Add the fetched size
-                stock: stock,
-                pcs: pcs,
-                image: image,
-                description: description,
-                variationPrice: price,
-                ProductId: productId
-            });
-        }
-
-        res.status(201).json({ message: 'Attribute variations created successfully' });
-    } catch (error) {
-        console.error('Error creating attribute variations:', error);
-        res.status(500).json({ error: 'Internal server error' });
+    // Check if productId is empty or undefined
+    if (!productId) {
+        return res.status(400).json({ error: 'Product ID is required' });
     }
+
+    for (const variation of variations) {
+        const { ColourId, SizeId } = variation;
+
+        const colourIds = Array.isArray(ColourId) ? ColourId : [ColourId];
+        const sizeIds = Array.isArray(SizeId) ? SizeId : [SizeId];
+
+        for (const colourId of colourIds) {
+            for (const sizeId of sizeIds) {
+                await AttributeVariations.create({
+                    ProductId: productId, // Use the productId retrieved from request parameters
+                    colourId: colourId,
+                    sizeId: sizeId
+                });
+            }
+        }
+    }
+    // Fetch and return the created attribute variations
+    res.status(200).json({ message: 'Attribute variations created successfully'  });
+} catch (error) {
+    console.error('Error creating attribute variations:', error);
+    res.status(500).json({ error: 'Internal server error' });
+}*/
+/*try {
+    const productId = req.params.productId;
+    const variations = req.body.variations;
+
+    // Check if productId is empty or undefined
+    if (!productId) {
+        return res.status(400).json({ error: 'Product ID is required' });
+    }
+
+    // Iterate over each variation
+    for (const variation of variations) {
+        const { ColourId, SizeId } = variation;
+
+        // Convert ColourId and SizeId to arrays if they are not already arrays
+        const colourIds = Array.isArray(ColourId) ? ColourId : [ColourId];
+        const sizeIds = Array.isArray(SizeId) ? SizeId : [SizeId];
+
+        // Create attribute variations for each combination of colour and size
+        for (const colourId of colourIds) {
+            for (const sizeId of sizeIds) {
+                // Create the attribute variation
+                await AttributeVariations.create({
+                    ProductId: productId,
+                    colourId: colourId,
+                    sizeId: sizeId
+                });
+            }
+        }
+    }
+
+    // Return success response
+    res.status(200).json({ message: 'Attribute variations created successfully' });
+} catch (error) {
+    console.error('Error creating attribute variations:', error);
+
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError') {
+        return res.status(400).json({ error: 'Validation error: ' + error.message });
+    }
+
+    // Handle other Sequelize errors
+    res.status(500).json({ error: 'Internal server error' });
+}
+*/
+const productId = req.params.productId;
+const variations = req.body.variations;
+
+// Check if productId is empty or undefined
+if (!productId) {
+    return res.status(400).json({ error: 'Product ID is required' });
+}
+
+try {
+    // Iterate over each variation
+    for (const variation of variations) {
+        const { ColourId, SizeId } = variation;
+
+        // Convert ColourId and SizeId to arrays if they are not already arrays
+        const colourIds = Array.isArray(ColourId) ? ColourId : [ColourId];
+        const sizeIds = Array.isArray(SizeId) ? SizeId : [SizeId];
+
+        // Retry the creation operation if it fails
+        await retry(async () => {
+            // Use Promise.all to await all create operations within the loop
+            await Promise.all(colourIds.map(async (colourId) => {
+                await Promise.all(sizeIds.map(async (sizeId) => {
+                    // Create the attribute variation
+                    await AttributeVariations.create({
+                        ProductId: productId,
+                        colourId: colourId,
+                        sizeId: sizeId
+                    });
+                }));
+            }));
+        });
+    }
+
+    // Return success response
+    res.status(200).json({ message: 'Attribute variations created successfully' });
+} catch (error) {
+    console.error('Error creating attribute variations:', error);
+    res.status(500).json({ error: 'Internal server error' });
+}
+
+// Retry function to handle retries with exponential backoff
+async function retry(operation, maxRetries = 3, delay = 1000) {
+    let retries = 0;
+    while (true) {
+        try {
+            await operation();
+            break; // Operation succeeded, exit loop
+        } catch (error) {
+            retries++;
+            if (retries >= maxRetries) {
+                throw error; // Max retries exceeded, throw error
+            }
+            await sleep(delay * Math.pow(2, retries)); // Exponential backoff
+        }
+    }
+}
+
+// Function to sleep for a specified duration
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 };
 
-
+//getAttributeVariations
+exports.GetAttributeVariations = async (req,res)=>{
+	try{
+		const product_Id =req.params.productId;
+		console.log("product_Id",product_Id);
+		const GetAttributeVariation = await AttributeVariations.findAll({where:{id:product_Id}});
+		 console.log("GetAttributeVariation---------",GetAttributeVariation)
+	
+	}catch(error){
+		console.log("error--",error)
+	}
+}
 
 
 exports.updateProduct = async (req, res) => {
@@ -705,6 +780,8 @@ console.log("error",error)
 }
 }
 
+//createAttribute
+
 exports.createAttributes = async (req, res) => {
     const attributeName = req.body.attributeName;
     const values = req.body.value;
@@ -755,43 +832,86 @@ exports.createAttributes = async (req, res) => {
 
 
 
-exports.AttributeVariations = async (req, res) => {
-    try {
-        const { variations } = req.body; // Extract variations array from request body
-        const { productId } = req.params; // Extract productId from request parameters
 
-        if (Array.isArray(variations)) {
-            // If variations is an array, it means multiple variations are being created
-            for (const variation of variations) {
-                await createSingleVariation(productId, variation);
-            }
-        } else {
-            // If variations is not an array, it means a single variation is being created
-            await createSingleVariation(productId, variations);
+exports.createCompainAttribute = async (req, res) => {
+console.log("req.params---",req.params)
+    try {
+	const productId =req.params.productId;
+console.log("productId-----------",productId)
+        const { colour_Value_Id, size_Value_Id, stock, pcs, description, variationPrice } = req.body;
+        const image = req.file; // Assuming image is uploaded using multipart form-data
+	
+	const size = await Size.findAll({where:{id:size_Value_Id}})
+	const colour  = await Colour.findAll({where:{id:colour_Value_Id}})
+	const sizeName=size[0].dataValues.value;
+	const colourName =colour[0].dataValues.value;
+        // Check if productId is provided
+        if (!productId) {
+            return res.status(400).json({ error: 'Product ID is required' });
         }
 
+        const originalImageDir = `/etc/ec/data/CompainAttributeImage/original`;
+
+        if (!fs.existsSync(originalImageDir)) {
+            fs.mkdirSync(originalImageDir, { recursive: true });
+        }
+
+        const thumbnailDir = `/etc/ec/data/CompainAttributeImage/thumbnails`;
+        if (!fs.existsSync(thumbnailDir)) {
+            fs.mkdirSync(thumbnailDir, { recursive: true });
+        }
+
+	if (req.files && req.files.image) {
+	console.log("=========entering the if condition---------")
+   		 const images = req.files.image;
+console.log("----------",images)
+    		const imageName = images.name.replace(/ /g, '_');
+    		const originalImagePath = `${originalImageDir}/${imageName}`;
+
+    		await images.mv(originalImagePath);
+ 
+		//else {
+    		//res.status(400).json({ error: 'No file uploaded or field name is incorrect' });
+		//}
+	console.log("images-------",images)
+        const extension = path.extname(images.name).toLowerCase();
+        const thumbnailImagePath = `${thumbnailDir}/${path.basename(imageName, extension)}.webp`;
+
+        let pipeline;
+        if (extension === '.png' || extension === '.jpg' || extension === '.jpeg') {
+            pipeline = sharp(originalImagePath)
+            .resize({ width: 200, height: 200 })
+            .toFormat('webp') // Convert to WebP format
+            .webp({ quality: 80 }) // Set WebP quality
+            .toFile(thumbnailImagePath);
+        } else {
+            throw new Error('Unsupported file format');
+        }
+    
+        await pipeline;
+
+            const originalImageUrl = `https://salesman.aindriya.co.in/CompainAttributeImage/original/${imageName}`;
+            const thumbnailImageUrl = `https://salesman.aindriya.co.in/CompainAttributeImage/thumbnails/${path.basename(imageName, extension)}.webp`;
+
+        // Create the CompainAttribute record in the database
+        const compainAttribute = await CompainAttributes.create({
+            productId: productId,
+            colour_Value_Id: colour_Value_Id,
+            size_Value_Id: size_Value_Id,
+            colour: colourName,
+            size: sizeName,
+            stock: stock,
+            pcs: pcs,
+            image: originalImageUrl, // Save the image path if provided
+            description: description,
+            variationPrice: variationPrice
+        });
+
         // Return success response
-        res.status(201).json({ message: "Attribute variation(s) created successfully" });
+        res.status(201).json({ message: 'CompainAttribute created successfully', compainAttribute });
+	}
     } catch (error) {
-        console.error("Error creating attribute variation(s):", error);
-        res.status(500).json({ message: 'Internal server error' });
+        console.error('Error creating CompainAttribute:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 };
-
-async function createSingleVariation(productId, variation) {
-    const { colourId, sizeId, stock, pcs, image, description, price } = variation;
-
-    // Create AttributeVariation entry for the current variation
-    await AttributeVariations.create({
-        colourId: colourId,
-        sizeId: sizeId,
-        pcs: pcs,
-        ProductId: productId, // Associate with the provided productId
-        Image: image,
-        description: description,
-        variationPrice: price,
-        Stock: stock
-    });
-}
-
-

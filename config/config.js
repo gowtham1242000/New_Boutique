@@ -16,7 +16,7 @@ const operatorsAliases = {
     $in    : Op.in,
     $cast  : (value, type) => Sequelize(`CAST(${value} AS ${type})`)
 }
-const sequelize = new Sequelize('dressApp', 'mydress', 'dresspass', {
+const sequelize = new Sequelize('dressapp', 'mydress', 'dresspass', {
   host: 'localhost',
   dialect: 'postgres',
   port: '5432',
