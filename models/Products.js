@@ -10,8 +10,8 @@ const product = sequelize.define('Products', {
 //  categories:DataTypes.STRING,
   description:DataTypes.STRING,
   sellingPrice:DataTypes.INTEGER,
-  status:DataTypes.BOOLEAN
-  
+  status:DataTypes.BOOLEAN,
+  image:DataTypes.STRING
 });
 
 product.belongsTo(Category, { foreignKey: 'categoriesId', targetKey: 'id' });

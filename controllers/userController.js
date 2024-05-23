@@ -26,7 +26,9 @@ exports.createOrder = async (req, res) => {
     //    const discount = calculateDiscount(product_Id);
 
 	const com_Attribute = await CompainAttribute.findAll({where:{colour_Value_Id:colour,size_Value_Id:size}});
-	console.log("com_Attribute------------",com_Attribute.id)
+	console.log("com_Attribute------------",com_Attribute.id);
+
+	//if(order_Type == 'COD'){ // cod cash on delivery
         // Create order record
         const order = await Order.create({
             order_Status: 'Pending',
@@ -53,7 +55,8 @@ exports.createOrder = async (req, res) => {
             	transactionId: transactionId,
            	 paymentStatus: paymentStatus
 	}) 
-
+	
+	
         // Create payment record
 /*        await PaymentDetails.create({
             user_Id: userId,
@@ -68,7 +71,10 @@ exports.createOrder = async (req, res) => {
         if (productDiscount) {
             // Update discount details
             // Assuming you have the logic to update the discount details based on the order
-        }
+        };
+/*	}else{
+		payment();	
+	}*/
 
         res.status(201).json({ message: 'Order created successfully' });
     } catch (error) {
@@ -185,7 +191,7 @@ console.log("error",error)
 	}
 }*/
 
-exports.getProducts = async (req, res) => {
+/*exports.getProducts = async (req, res) => {
     try {
         // Fetch all products
         const products = await Product.findAll({});
@@ -216,7 +222,21 @@ exports.getProducts = async (req, res) => {
         console.log("error", error);
         res.status(500).json({ message: 'An error occurred', error });
     }
-};
+};*/
+
+exports.getProducts = async (req,res) =>{
+	try{
+		const products = await Product.findAll();
+		products.map(function(data){
+			console.log("data",data.id)
+	return
+		})
+		res.status(200).json({products})
+	}catch(error){
+		console.log(error)
+		res.status(500).json({message:'Internal Server Error'})
+	}
+}
 
 
 //getProductDetails
@@ -228,7 +248,7 @@ console.log("products--",products);
 console.log("products--",products[0].dataValues.id)
         // Use Promise.all to fetch related details for each product
         //const productDetails = await Promise.all(products.map(async (product) => {
-            const productId = products.id;
+            const productId = products[0].dataValues.id;
 
 
             // Fetch related details from other tables
@@ -236,18 +256,18 @@ console.log("products--",products[0].dataValues.id)
             const campaignAttributes = await CompainAttribute.findAll({ where: { productId:productId } });
             const attributeVariation = await AttributeVariation.findAll({ where: { ProductId:productId } });
             // Combine the details for the current product
-            return {
-                product,
+            /*return {
+                products,
                 discount: productDiscount,
                 campaignAttributes,
                 attributeVariation
-            };
+            };*/
         //}));
 
         // Send the combined details in the response
         res.status(200).json({
             message: 'Product list fetched successfully',
-            productDetails
+            products,productDiscount,campaignAttributes,attributeVariation
         });
 
 	}catch(error){
@@ -370,5 +390,113 @@ exports.likeCounts = async(req,res)=>{
 		console.log("error",error);
 		res.status(500).json({message:'Internal Server Error'});
 	}
-}	
+};
+
+
+
+function payment(){
+
+	const crypto = require('crypto');
+	const axios = require('axios');
+// const { merchant_id, salt_key } = require('../../secret');
+	require("dotenv").config();
+
+	const { merchant_id, salt_key } = process.env;
+
+	const newPayment = async (req, res) => {
+    		try {
+        		const { name, merchantTransactionId, merchantUserId, amount } = req.body
+
+        		const data = {
+            			merchantId: merchant_id,
+            			merchantTransactionId,
+            			merchantUserId,
+            			name,
+            			amount: amount * 100,
+            			// redirectUrl: `http://localhost:8080/scriptview/payment/gateway/status/${merchantTransactionId}`,
+            			redirectMode: 'POST',
+            			paymentInstrument: {
+                		type: 'PAY_PAGE'
+            		}
+        	};
+        	const payload = JSON.stringify(data);
+        	const payloadMain = Buffer.from(payload).toString('base64');
+        	const keyIndex = 1;
+        	const string = payloadMain + '/pg/v1/pay' + salt_key;
+        	const sha256 = crypto.createHash('sha256').update(string).digest('hex');
+        	const checksum = sha256 + '###' + keyIndex;
+
+        	const prod_URL = "https://api.phonepe.com/apis/hermes/pg/v1/pay"
+        	const options = {
+            		method: 'POST',
+            		url: prod_URL,
+            		headers: {
+                	accept: 'application/json',
+                	'Content-Type': 'application/json',
+                	'X-VERIFY': checksum
+            	},
+            	data: {
+                	request: payloadMain
+            	}
+        };
+
+        axios.request(options).then(function (response) {
+            console.log(response.data)
+            return res.redirect(response.data.data.instrumentResponse.redirectInfo.url)
+        })
+            .catch(function (error) {
+                console.error(error);
+            });
+
+    } catch (error) {
+        res.status(500).send({
+            message: error.message,
+            success: false
+        })
+    }
+}
+
+const checkStatus = async (req, res) => {
+
+    const {merchantTransactionId, merchantId} = res.req.body
+
+    const keyIndex = 1;
+    const string = `/pg/v1/status/${merchantId}/${merchantTransactionId}` + salt_key;
+    const sha256 = crypto.createHash('sha256').update(string).digest('hex');
+    const checksum = sha256 + "###" + keyIndex;
+
+    const options = {
+        method: 'GET',
+        url: `https://api.phonepe.com/apis/hermes/pg/v1/status/${merchantId}/${merchantTransactionId}`,
+        headers: {
+            accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-VERIFY': checksum,
+            'X-MERCHANT-ID': `${merchantId}`
+        }
+    };
+
+    axios.request(options).then(async (response) => {
+        if (response.data.success === true) {
+            const url = `http://localhost:3000/success`
+            return res.redirect(url)
+        } else {
+            const url = `http://localhost:3000/failure`
+            return res.redirect(url)
+        }
+    })
+        .catch((error) => {
+            console.error(error);
+        });
+};
+
+
+//module.exports = { newPayment, checkStatus }
+
+}
+
+
+
+
+
 

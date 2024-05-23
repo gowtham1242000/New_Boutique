@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
 
+router.post('/signup', adminController.createAdmin);
+router.post('/signin', adminController.signUser);
 router.post('/categories', adminController.createCategorie);
 router.post('/products', adminController.createProduct);
 router.post('/colours',adminController.createColour);
@@ -22,6 +24,7 @@ router.post('/createAttributes', adminController.createAttributes);
 router.post('/createCompainAttribute/:productId', adminController.createCompainAttribute);
 router.post('/AttributeVariations/:productId', adminController.createAttributeVariation);
 router.get('/getAttributeVariations/:productId',adminController.GetAttributeVariations);
+router.get('/getAttribute',adminController.getAttribute);
 // const userController = require('../controllers/userController');
 
 // router.use('/tmp', express.static('tmp'));

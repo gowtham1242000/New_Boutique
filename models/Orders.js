@@ -8,6 +8,7 @@ const CompainAttribute = require('./CompainAttribute')
 
 const order = sequelize.define('Orders', {
   order_Status:DataTypes.STRING,
+  order_Type:DataTypes.STRING,
   user_Id:DataTypes.INTEGER,
   product_Id:DataTypes.INTEGER,
   price:DataTypes.INTEGER,
@@ -16,7 +17,7 @@ const order = sequelize.define('Orders', {
   subPrice:DataTypes.INTEGER,
   tax:DataTypes.INTEGER,
   discount:DataTypes.INTEGER,
-  compainAttribute_Id:DataTypes.INTEGER,
+  compainAttribute_Id:DataTypes.INTEGER
 });
 
 order.belongsTo(Product, { foreignKey: 'product_Id', targetKey: 'id' });

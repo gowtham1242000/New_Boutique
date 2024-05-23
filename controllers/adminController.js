@@ -17,9 +17,11 @@ const Attribute =require('../models/Attributes');
 const AttributeVariations=require('../models/AttributeVariations');
 const CompainAttributes=require('../models/CompainAttribute');
 const Order= require('../models/Orders');
+const AdminUser = require('../models/AdminUsers');
 const ProductDiscounts = require('../models/ProductDiscount');
 const sharp = require('sharp');
-
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const CategoriePath='/etc/ec/data/Categorie/';
 const ProductPath='/etc/ec/data/Product/';
 const ColourPath='/etc/ec/data/Colour/';
@@ -49,6 +51,47 @@ function generateOTP() {
 }
 
 
+exports.createAdmin = async (req,res) => {
+console.log("req.body---------",req.body);
+	try{
+
+		const {emailId,password}=req.body;
+		//hash the password
+
+		const hashedPassword = await bcrypt.hash(password, 10);
+		const user  = await AdminUser.create({
+            emailId: emailId,
+            password: hashedPassword,
+            role: 'admin' // Assuming the role is 'admin' for now
+        });
+ //       const token = jwt.sign({ userId: user.id }, secretKey, { expiresIn: '360d' });
+		res.status(201).send({ message: 'Admin user created successfully' });
+	}catch(error){
+		console.log("error-------",error)
+		res.status(500).json({ error:"Error of creating admin user"});
+	}
+
+}
+
+
+
+exports.signUser = async (req,res) => {
+console.log(req.body)
+	try{
+		const { emailId, password } = req.body;
+		const user =await AdminUser.findOne({ where: { emailId:emailId}});
+		console.log("user----------",user)
+		if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ message: 'Invalid username or password' });
+        }
+//        console.log("secretKey------",secretKey)
+		//const token = jwt.sign({ userId: user.id }, secretKey,{ expiresIn:'360d'});
+		res.status(200).json({ message: 'Signin successful' });	
+	}catch(error){
+		res.status(500).json({message:"No User found"})
+	}
+
+}
 
 exports.loginRequestOtp = async (req, res) => {
   try {
@@ -245,11 +288,32 @@ exports.createProduct = async (req, res) => {
         //const  categoriesName= categories[0].dataValues.categoriesName;
         //console.log("categoriesName",categoriesName);
         // Create the product
-	const product = await  Product.create({ name,code,categoriesId,description,sellingPrice,status });
+	 var finalName =name.replace(/\s+/g, '_');
+        const desImageDir = `${ProductPath}${finalName}`;
+	
+	 if (!fs.existsSync(desImageDir)) {
+            console.log("checking------");
+            fs.mkdirSync(desImageDir, { recursive: true });
+        }
+
+	if (!fs.existsSync(desImageDir)) {
+            console.log("checking------");
+            fs.mkdirSync(desImageDir, { recursive: true });
+        }
+
+	 var desImageUrl = '';
+        fs.writeFileSync(`${desImageDir}/${req.files.image.name}`, req.files.image.data, 'binary');
+        const destinationImgUrl = `https://salesman.aindriya.co.in${URLpathp}/${finalName}/${req.files.image.name}`;
+        console.log("destinationImgUrl-----------", destinationImgUrl);
+
+	
+	const product = await  Product.create({ name,code,categoriesId,description,sellingPrice,status,image:destinationImgUrl });
 console.log("product-------",product)
 console.log("productId---",product.id)
 const productId = product.id
 console.log("productId---",productId)
+	
+
         // Create the product discount
         await ProductDiscounts.create({
             minimum_Quantity_Discount:minimumQuantity, discount_Percentage:discountPercentage, tax_Percentage:gstTaxPercentage,
@@ -499,12 +563,11 @@ exports.updateProduct = async (req, res) => {
         }
 
         // Handle image update if provided in the request
-
             // Implement image update logic here as shown in the previous response
         var finalName =product.name.replace(/\s+/g, '_');
-            if (req.files && req.files.img) {
+            if (req.files && req.files.image) {
             const desImageDir = `${ProductPath}${finalName}`;
-            const imgPath = `${desImageDir}/${req.files.img.name}`;
+            const imgPath = `${desImageDir}/${req.files.image.name}`;
 
             // Delete the previous image if it exists
             if (fs.existsSync(imgPath)) {
@@ -517,8 +580,8 @@ exports.updateProduct = async (req, res) => {
             }
 
             // Save the new image
-            fs.writeFileSync(imgPath, req.files.img.data, 'binary');
-            product.img = `http://localhost${URLpathp}/${finalName}/${req.files.img.name}`;
+            fs.writeFileSync(imgPath, req.files.image.data, 'binary');
+            product.image = `https://salesman.aindriya.co.in${URLpathp}/${finalName}/${req.files.image.name}`;
         }
 
         // Save the updated product
@@ -666,7 +729,7 @@ exports.createColour = async (req,res) =>{
 
 exports.createBanner = async (req,res) =>{
 
-        try{
+        /*try{
                 const {name,productId,description} = req.body;
         var finalName =name.replace(/\s+/g, '_')
                 const desImageDir =`${BannerPath}${finalName}`;
@@ -694,7 +757,29 @@ exports.createBanner = async (req,res) =>{
                 res.status(201).json({message:"created successfully",banner});
                 }catch(error){
                         res.status(500).json({ message: 'Internal server error' });
+                }*/
+
+	try{
+		const {name,percentage}=req.body;
+		
+		const finalName = name.replace(/\s+/g, '_')
+		const desImageDir =`${BannerPath}${finalName}`;
+		 if(!fs.existsSync(desImageDir)){
+                        fs.mkdirSync(desImageDir, {recursive: true});
                 }
+                var desImageUrl ='';
+                fs.writeFileSync(`${desImageDir}/${req.files.image.name}`,req.files.image.data,`binary`);
+                destinationImgUrl = `https://salesman.aindriya.co.in${URLpathb}/${finalName}/${req.files.image.name}`;
+		 const banner =await Banner.create({
+                        name,
+                        percentage,
+	                image:destinationImgUrl
+                })
+		res.status(201).json({message:"created successfully",banner});
+
+	}catch(error){
+		res.status(500).json({ message: 'Internal server error' });	
+	}
 }
 
 exports.updateBanner = async (req,res) =>{
@@ -780,9 +865,90 @@ console.log("error",error)
 }
 }
 
+//getAttribute
+
+exports.getAttribute=async (req,res)=>{
+	try{
+	/*const getAttribute = await Attribute.findAll();
+console.log("get---------",getAttribute);
+	getAttribute.map(function(data){
+
+	console.log(data.id)
+	})
+	const colour = await Colour.findAll();
+	const size = await Size.findAll();
+	var result =[getAttribute,colour,size];
+	res.status(200).json(result);
+
+		const getAttribute = await Attribute.findAll();
+        console.log("get---------", getAttribute);
+
+        // Use Promise.all to handle multiple asynchronous operations
+        const attributeDetails = await Promise.all(
+            getAttribute.map(async (data) => {
+                console.log(data.id);
+
+                // Fetch related colours and sizes for each attribute
+                const colours = await Colour.findAll({ where: { attributeId: data.id } });
+                const sizes = await Size.findAll({ where: { attributeId: data.id } });
+
+                // Combine the attribute data with its related colours and sizes
+                return {
+                    ...data.dataValues,
+                    colours,
+                    sizes
+                };
+            })
+        );
+
+        res.status(200).json(attributeDetails);
+*/
+
+const attributes = await Attribute.findAll();
+        console.log("get---------", attributes);
+
+        // Use Promise.all to handle multiple asynchronous operations
+        const attributeDetails = await Promise.all(
+            attributes.map(async (attribute) => {
+                console.log(attribute.id);
+
+                // Fetch related colours and sizes for each attribute
+                const colours = await Colour.findAll({ where: { attributeId: attribute.id } });
+                const sizes = await Size.findAll({ where: { attributeId: attribute.id } });
+
+                // Only include non-empty values arrays in the response
+                const response = {
+                    id: attribute.id,
+                    attribute: attribute.attribute,
+		    status: attribute.status,
+                    createdAt: attribute.createdAt,
+                    updatedAt: attribute.updatedAt,
+                };
+
+                if (colours.length > 0) {
+                    response.values = colours;
+                }
+
+                if (sizes.length > 0) {
+                    response.values = sizes;
+                }
+
+                return response;
+            })
+        );
+
+        res.status(200).json(attributeDetails);
+
+	}catch(error){
+		console.log(error)
+		res.status(500).json({message:'Internal server Error'})
+	}
+}
+
 //createAttribute
 
 exports.createAttributes = async (req, res) => {
+console.log("req.body---------",req.body)
     const attributeName = req.body.attributeName;
     const values = req.body.value;
     console.log("values",values);
@@ -813,8 +979,9 @@ exports.createAttributes = async (req, res) => {
         // Iterate through the values and save them in the corresponding table
         const valuePromises = values.map(async (value) => {
             console.log("value",value)
+	   
             // Save each value along with the attributeId in the corresponding table
-            await TableModel.create({
+        /*    await TableModel.create({
                 value:value,
                 attributeId: attribute.id
             });
@@ -822,7 +989,24 @@ exports.createAttributes = async (req, res) => {
 
         // Wait for all value creations to complete
         await Promise.all(valuePromises);
+	*/
+	const existingValue = await TableModel.findOne({
+        where: {
+            value: value,
+            attributeId: attribute.id
+        }
+    });
 
+    // If the value does not exist, create a new record
+    if (!existingValue) {
+        await TableModel.create({
+            value: value,
+            attributeId: attribute.id
+        });
+    } else {
+        console.log(`Value "${value}" already exists for attributeId ${attribute.id}`);
+    }
+	})
         res.status(200).json({ message: 'Attributes and values created successfully' });
     } catch (error) {
         console.error('Error creating attributes:', error);

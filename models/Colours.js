@@ -5,7 +5,8 @@ const colour = sequelize.define('Colour', {
   value:DataTypes.STRING,
   hexCode:DataTypes.STRING,
   attributeId:DataTypes.INTEGER,
-  image:DataTypes.STRING
+  image:DataTypes.STRING,
+  status:DataTypes.BOOLEAN
 });
 
 
