@@ -8,6 +8,7 @@ router.get('/getOrders/:userId', userController.getOrders);
 router.get('/getBooking/:userId', userController.getBooking);
 router.get('/getInterest/:userId', userController.getInterest);
 router.get('/getProducts', userController.getProducts);
+router.get('/getProductsWithAttributes',userController.getProductsWithAttributes);
 router.post('/likeProduct/:id', userController.likeProduct);
 router.get('/getProductDetails/:productId', userController.getProductDetails);
 router.get('/getCategories', userController.getCategories);

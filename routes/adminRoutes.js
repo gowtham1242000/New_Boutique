@@ -25,6 +25,9 @@ router.post('/createCompainAttribute/:productId', adminController.createCompainA
 router.post('/AttributeVariations/:productId', adminController.createAttributeVariation);
 router.get('/getAttributeVariations/:productId',adminController.GetAttributeVariations);
 router.get('/getAttribute',adminController.getAttribute);
+router.get('/getAllOrders',adminController.getAllOrders);
+router.get('/getColour',adminController.getColour);
+router.get('/getSize',adminController.getSize);
 // const userController = require('../controllers/userController');
 
 // router.use('/tmp', express.static('tmp'));

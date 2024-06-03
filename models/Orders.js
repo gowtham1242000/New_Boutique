@@ -17,7 +17,10 @@ const order = sequelize.define('Orders', {
   subPrice:DataTypes.INTEGER,
   tax:DataTypes.INTEGER,
   discount:DataTypes.INTEGER,
-  compainAttribute_Id:DataTypes.INTEGER
+  compainAttribute_Id:DataTypes.INTEGER,
+  customer_name:DataTypes.STRING,
+  customer_phonenumber:DataTypes.STRING,
+  customer_email:DataTypes.STRING
 });
 
 order.belongsTo(Product, { foreignKey: 'product_Id', targetKey: 'id' });

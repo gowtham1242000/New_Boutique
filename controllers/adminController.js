@@ -155,6 +155,8 @@ exports.createCategorie = async (req, res) => {
         const categorie = await Categorie.create({
                 categoriesName:categoriesName,
                 image:destinationImgUrl,
+                status:req.body.status,
+		description:req.body.description,
                 createdAt: new Date(),
                 updatedAt: new Date()
         });
@@ -170,7 +172,7 @@ exports.createCategorie = async (req, res) => {
 
 //update categorie
 exports.updateCategorie = async (req, res) => {
-    try {
+    /*try {
         const id = req.params.id;
 
         const categorie = await Categorie.findOne({ where: { id: id } });
@@ -188,7 +190,7 @@ exports.updateCategorie = async (req, res) => {
         }
 
         // Get the path of the existing image file
-        console.log("req.files.image.name---------",req.files.image.name)
+//        console.log("req.files.image.name---------",req.files.image.name)
         // return
 
         const imagePath = `${desImageDir}/${req.files.image.name}`;
@@ -202,10 +204,18 @@ exports.updateCategorie = async (req, res) => {
 
         // Write the new image file
         fs.writeFileSync(imagePath, req.files.image.data, 'binary');
-
+	if(req.files.image){
         // Update the category's image URL
-        categorie.image = `https://salesman.aindriya.co.in${URLpathc}/${finalName}/${req.files.image.name}`;
+        categorie.image = `https://salesman.aindriya.co.in${URLpathc}/${finalName}/${req.files.image.name}`;	
+}
+	if (req.body.description) {
+        categorie.description = req.body.description;
+    }
 
+    // Update status if provided
+    if (req.body.status !== undefined) {
+        categorie.status = req.body.status;
+    }
         // Save the updated category
         await categorie.save();
 
@@ -213,7 +223,63 @@ exports.updateCategorie = async (req, res) => {
     } catch (error) {
         console.error('Error updating category:', error);
         res.status(500).json({ message: 'Internal server error' });
+    }*/
+	try {
+    const id = req.params.id;
+
+    // Fetch the category by ID
+    const categorie = await Categorie.findOne({ where: { id: id } });
+    if (!categorie) {
+        return res.status(404).json({ message: 'Category not found' });
     }
+
+    // Replace spaces with underscores in the category name for directory naming
+    var finalName = categorie.categoriesName.replace(/\s+/g, '_');
+    const desImageDir = `${CategoriePath}${finalName}`;
+    console.log("desImageDir---------", desImageDir);
+
+    // Check if the directory exists
+    if (!fs.existsSync(desImageDir)) {
+        console.log("Directory does not exist");
+        return res.status(404).json({ message: 'Directory does not exist' });
+    }
+
+    if (req.files && req.files.image) {
+        // Get the path of the existing image file
+        const imagePath = `${desImageDir}/${req.files.image.name}`;
+        console.log("imagePath----------", imagePath);
+
+        // Check if the image file exists and delete it if so
+        if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+        }
+
+        // Write the new image file
+        fs.writeFileSync(imagePath, req.files.image.data, 'binary');
+
+        // Update the category's image URL
+        categorie.image = `https://salesman.aindriya.co.in${URLpathc}/${finalName}/${req.files.image.name}`;
+    }
+
+    // Update description if provided
+    if (req.body.description) {
+        categorie.description = req.body.description;
+    }
+
+    // Update status if provided
+    if (req.body.status !== undefined) {
+        categorie.status = req.body.status;
+    }
+
+    // Save the updated category
+    await categorie.save();
+
+    res.status(200).json({ message: 'Category updated successfully', categorie });
+} catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ message: 'Internal server error' });
+}
+
 };
 
 //create product
@@ -281,7 +347,7 @@ exports.createProduct = async (req, res) => {
     try {
         // Extract data from request body
         const { name,code,categoriesId,description,sellingPrice,status,
-            minimumQuantity, discountPercentage, gstTaxPercentage,
+            discountPercentage, gstTaxPercentage,
             minimumQuantityWholesale, wholesalePrice } = req.body;
 //console.log("categories--------",categorie)
   //          const categories = await Categorie.findAll({where:{id:categorie}})
@@ -296,10 +362,6 @@ exports.createProduct = async (req, res) => {
             fs.mkdirSync(desImageDir, { recursive: true });
         }
 
-	if (!fs.existsSync(desImageDir)) {
-            console.log("checking------");
-            fs.mkdirSync(desImageDir, { recursive: true });
-        }
 
 	 var desImageUrl = '';
         fs.writeFileSync(`${desImageDir}/${req.files.image.name}`, req.files.image.data, 'binary');
@@ -313,10 +375,9 @@ console.log("productId---",product.id)
 const productId = product.id
 console.log("productId---",productId)
 	
-
         // Create the product discount
         await ProductDiscounts.create({
-            minimum_Quantity_Discount:minimumQuantity, discount_Percentage:discountPercentage, tax_Percentage:gstTaxPercentage,
+            minimum_Quantity_Discount:minimumQuantityWholesale, discount_Percentage:discountPercentage, tax_Percentage:gstTaxPercentage,
             minimum_Quantity_Wholesale:minimumQuantityWholesale, wholesale_Price:wholesalePrice,
             productId: productId // Assign the product ID to the discount
         });
@@ -329,7 +390,14 @@ console.log("productId---",productId)
     }
 };
 
-
+exports.getAllOrders = async (req,res)=>{
+        try{
+                 const orders = await Order.findAll();
+                res.status(200).json(orders)
+        }catch (error){
+                res.status(500).json({ message: 'Internal Server Error' });
+        }
+}
 
 /*exports.createCompainAttribute = async (req, res) => {
     try {
@@ -503,6 +571,7 @@ function sleep(ms) {
 //getAttributeVariations
 exports.GetAttributeVariations = async (req,res)=>{
 	try{
+console.log("--------------")
 		const product_Id =req.params.productId;
 		console.log("product_Id",product_Id);
 		const GetAttributeVariation = await AttributeVariations.findAll({where:{id:product_Id}});
@@ -906,16 +975,20 @@ console.log("get---------",getAttribute);
 
 const attributes = await Attribute.findAll();
         console.log("get---------", attributes);
-
+//return
         // Use Promise.all to handle multiple asynchronous operations
         const attributeDetails = await Promise.all(
             attributes.map(async (attribute) => {
-                console.log(attribute.id);
-
+                console.log("-------------attribute.id----------",attribute.id);
+//console.log("attributeDetails=============",attributeDetails);
+//return
                 // Fetch related colours and sizes for each attribute
                 const colours = await Colour.findAll({ where: { attributeId: attribute.id } });
                 const sizes = await Size.findAll({ where: { attributeId: attribute.id } });
-
+		const ages = await Age.findAll({ where: { attributeId: attribute.id } });
+console.log("colours-------",colours);
+console.log("sizes----------",sizes);
+console.log("sizes----------",ages);
                 // Only include non-empty values arrays in the response
                 const response = {
                     id: attribute.id,
@@ -925,12 +998,17 @@ const attributes = await Attribute.findAll();
                     updatedAt: attribute.updatedAt,
                 };
 
-                if (colours.length > 0) {
+	console.log("---------responce----------",response); 
+//return       
+        if (colours.length > 0) {
                     response.values = colours;
                 }
 
                 if (sizes.length > 0) {
                     response.values = sizes;
+                }
+		if (ages.length > 0) {
+                    response.values = ages;
                 }
 
                 return response;
@@ -1099,3 +1177,26 @@ console.log("----------",images)
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+
+exports.getColour =async(req,res) =>{
+	try{
+		const colour =await Colour.findAll();
+		console.log("colour-------",colour);
+		res.status(200).json(colour)
+	}catch(error){
+		res.status(500).json({message:'Internal Server Error'})
+	}
+
+}
+
+exports.getSize = async (req,res) =>{
+	try{
+		const size = await Size.findAll();
+		res.status(200).json(size)
+	}catch(error){
+		res.status(500).json({message:'Internal Server Error'});
+	}
+
+}
+

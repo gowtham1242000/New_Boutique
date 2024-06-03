@@ -99,7 +99,7 @@ exports.createOrder = async (req, res) => {
 	}catch (error){
 		console.log("error----",error)
 		res.status(500).json({message:'Internal Server Error'})
-
+x
 	}
 }*/
 
@@ -124,6 +124,15 @@ exports.getOrders = async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 };
+
+/*exports.getAllOrders = async (req,res)=>{
+	try{
+		 const orders = await Order.findAll();
+		res.status(200).json(orders)
+	}catch (error){
+		res.status(500).json({ message: 'Internal Server Error' });
+	}
+}*/
 
 //getBooking
 exports.getBooking = async (req, res) => {
@@ -229,13 +238,65 @@ exports.getProducts = async (req,res) =>{
 		const products = await Product.findAll();
 		products.map(function(data){
 			console.log("data",data.id)
-	return
+	//returnconst 
+ 
+	//	const comapinAttribute =await CompainAttribute.findAll({where:{productId:data.id}})
+
+
 		})
 		res.status(200).json({products})
 	}catch(error){
 		console.log(error)
 		res.status(500).json({message:'Internal Server Error'})
 	}
+}
+
+
+/*exports.getProductsWithAttributes = async (req, res) => {
+    try {
+        const products = await Product.findAll();
+        const productsWithAttributes = [];
+
+        for (const product of products) {
+            const comapinAttributes = await CompainAttribute.findAll({ where: { productId: product.id } });
+            const productWithAttributes = {
+                product,
+                comapinAttributes
+            };
+            productsWithAttributes.push(productWithAttributes);
+        }
+
+        res.status(200).json({ productsWithAttributes });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+}*/
+
+
+
+exports.getProductsWithAttributes = async (req, res) => {
+    try {
+        const products = await Product.findAll();
+        const productsWithAttributes = [];
+
+        for (const product of products) {
+            const comapinAttributes = await CompainAttribute.findAll({ where: { productId: product.id } });
+            // Construct the product object with the compainAttributes array nested inside
+            const productWithAttributes = {
+        //        product: {
+                    ...product.toJSON(),
+                    compainattribute: comapinAttributes
+          //      }
+            };
+            productsWithAttributes.push(productWithAttributes);
+        }
+
+        res.status(200).json(productsWithAttributes);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 }
 
 
